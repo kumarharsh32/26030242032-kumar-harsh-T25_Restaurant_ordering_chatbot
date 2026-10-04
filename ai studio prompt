@@ -1,0 +1,476 @@
+Build a complete working web-based restaurant ordering chatbot called:
+
+"Tambda Rassa Kitchen – AI Restaurant Ordering Assistant"
+
+This is a college assignment, so the application must be functional and demonstrate reliable business-rule enforcement, not just a generic AI chat interface.
+
+IMPORTANT:
+The application must NOT invent menu items, prices, availability, allergens, GST, discounts, delivery rules, or restaurant policies.
+
+Use the following restaurant data as the source of truth.
+
+==================================================
+RESTAURANT INFORMATION
+==================================================
+
+Restaurant:
+Tambda Rassa Kitchen
+
+Location:
+Gangapur Road, Nashik
+
+Hours:
+12:00-15:30 and 19:00-23:30, all days
+
+Delivery radius:
+6 km
+
+Delivery:
+Free above Rs 499
+Rs 40 otherwise
+
+Taxes:
+5% GST on food bill
+
+Payment:
+UPI, cards, cash on delivery
+
+Offer:
+10% off on orders above Rs 999 on weekdays
+
+==================================================
+MENU DATA
+==================================================
+
+The menu must use EXACTLY the following columns:
+
+item_id
+category
+item_name
+price_inr
+food_type
+spice_level
+prep_time_min
+allergen_note
+available_today
+
+There are 34 menu items in the supplied workbook, with IDs M01-M34.
+
+IMPORTANT:
+Do not invent additional menu items.
+
+Use the following menu data:
+
+M01 | Starters | Paneer Tikka | 260 | Veg | Medium | 15 | Contains dairy | Yes
+M02 | Starters | Chicken Tikka | 320 | Non-Veg | Medium | 18 | None | Yes
+M03 | Starters | Veg Seekh Kebab | 220 | Veg | Mild | 15 | None | Yes
+M04 | Starters | Chicken Seekh Kebab | 300 | Non-Veg | Medium | 18 | None | Yes
+M05 | Starters | Masala Papad | 90 | Veg | Spicy | 8 | None | No
+M06 | Starters | Crispy Corn | 180 | Veg | Spicy | 12 | None | No
+M07 | Main Course | Dal Makhani | 240 | Veg | Medium | 20 | Contains dairy | No
+M08 | Main Course | Paneer Butter Masala | 280 | Veg | Medium | 20 | Contains dairy | Yes
+M09 | Main Course | Butter Chicken | 360 | Non-Veg | Medium | 25 | Contains dairy | No
+M10 | Main Course | Chicken Curry | 340 | Non-Veg | Medium | 25 | None | Yes
+M11 | Main Course | Mutton Rogan Josh | 420 | Non-Veg | Spicy | 30 | None | Yes
+M12 | Main Course | Veg Kolhapuri | 260 | Veg | Spicy | 20 | None | Yes
+M13 | Main Course | Kadai Paneer | 280 | Veg | Spicy | 20 | Contains dairy | Yes
+M14 | Main Course | Palak Paneer | 270 | Veg | Mild | 20 | Contains dairy | Yes
+M15 | Main Course | Chole | 220 | Veg | Medium | 20 | None | Yes
+M16 | Main Course | Rajma Masala | 220 | Veg | Medium | 20 | None | Yes
+M17 | Main Course | Chicken Biryani | 380 | Non-Veg | Medium | 30 | None | Yes
+M18 | Main Course | Mutton Biryani | 450 | Non-Veg | Spicy | 35 | None | Yes
+M19 | Rice & Breads | Steamed Rice | 140 | Veg | Mild | 10 | None | Yes
+M20 | Rice & Breads | Jeera Rice | 160 | Veg | Mild | 12 | None | Yes
+M21 | Rice & Breads | Veg Pulao | 180 | Veg | Mild | 15 | None | Yes
+M22 | Rice & Breads | Butter Naan | 70 | Veg | Mild | 8 | Contains gluten, dairy | Yes
+M23 | Rice & Breads | Garlic Naan | 80 | Veg | Mild | 8 | Contains gluten, dairy | Yes
+M24 | Rice & Breads | Tandoori Roti | 45 | Veg | Mild | 7 | Contains gluten | No
+M25 | Rice & Breads | Plain Roti | 40 | Veg | Mild | 7 | Contains gluten | Yes
+M26 | Desserts | Gulab Jamun | 100 | Veg | Mild | 8 | Contains dairy | Yes
+M27 | Desserts | Rasmalai | 140 | Veg | Mild | 10 | Contains dairy | Yes
+M28 | Desserts | Gajar Halwa | 130 | Veg | Mild | 10 | Contains dairy, nuts | Yes
+M29 | Desserts | Chocolate Brownie | 160 | Contains egg | Mild | 12 | Contains gluten, dairy, egg | Yes
+M30 | Beverages | Masala Chaas | 90 | Veg | Mild | 5 | Contains dairy | Yes
+M31 | Beverages | Sweet Lassi | 110 | Veg | Mild | 5 | Contains dairy | Yes
+M32 | Beverages | Fresh Lime Soda | 80 | Veg | Mild | 5 | None | Yes
+M33 | Beverages | Masala Tea | 70 | Veg | Mild | 5 | Contains dairy | Yes
+M34 | Beverages | Filter Coffee | 90 | Veg | Mild | 5 | Contains dairy | Yes
+
+IMPORTANT:
+The exact values from the Excel workbook are authoritative. If there is any conflict between the natural-language prompt and the workbook data, the workbook values must win.
+
+==================================================
+CORE FUNCTIONALITY
+==================================================
+
+Create a real chat interface.
+
+The customer should be able to type natural-language requests such as:
+
+"Give me 2 paneer tikka"
+
+"I want 2 paneer tikka, 1 dal makhani and 4 butter naan"
+
+"Remove the paneer tikka"
+
+"Actually make that veg kolhapuri"
+
+"Do you have anything Jain?"
+
+"What vegetarian starters are not spicy?"
+
+"I have a dairy allergy"
+
+"What will be my total?"
+
+"Do you deliver to Satpur MIDC?"
+
+==================================================
+RULE 1 — AVAILABILITY
+==================================================
+
+The chatbot MUST check available_today before adding an item.
+
+If available_today = No:
+
+DO NOT add the item.
+
+Instead respond:
+
+"Sorry, [item] is currently unavailable today."
+
+Example:
+
+Customer:
+"I want Dal Makhani."
+
+Bot:
+"Sorry, Dal Makhani is currently unavailable today."
+
+Never silently add unavailable items.
+
+==================================================
+RULE 2 — ALLERGENS
+==================================================
+
+If the customer tells the chatbot they have an allergy, remember it during the current conversation.
+
+Before adding an item, compare the customer's allergy against allergen_note.
+
+Example:
+
+Customer:
+"I have a dairy allergy."
+
+Customer:
+"Add paneer tikka."
+
+Bot:
+"Paneer Tikka contains dairy, so I can't add it because of your allergy."
+
+Do not claim an item is allergen-free unless the provided data supports that.
+
+==================================================
+RULE 3 — VEG FILTERING
+==================================================
+
+When the customer asks for vegetarian food, use the food_type column.
+
+Do not infer vegetarian status from the item name.
+
+==================================================
+RULE 4 — SPICE FILTERING
+==================================================
+
+When the customer asks for non-spicy or mild food:
+
+Exclude items whose spice_level is "Spicy".
+
+Prefer Mild items.
+
+==================================================
+RULE 5 — JAIN
+==================================================
+
+When the customer asks for Jain food:
+
+Only identify an item as explicitly Jain if the food_type data says Jain.
+
+Do not assume every vegetarian item is Jain.
+
+If the dataset contains an item marked:
+"Veg (Jain on request)"
+
+show that item as a Jain-on-request option.
+
+==================================================
+RULE 6 — ORDER CHANGES
+==================================================
+
+The latest customer instruction overrides an earlier instruction.
+
+Example:
+
+"Add one mutton rogan josh... actually remove it, make it veg kolhapuri"
+
+Final order must contain:
+
+Veg Kolhapuri x1
+
+and MUST NOT contain:
+
+Mutton Rogan Josh
+
+The chatbot should respond:
+
+"Sure. I've removed Mutton Rogan Josh and added 1 Veg Kolhapuri."
+
+==================================================
+RULE 7 — BILLING
+==================================================
+
+All arithmetic must be performed by deterministic application code.
+
+Do NOT ask Gemini to calculate the final bill itself.
+
+For each order line:
+
+line_total = price_inr × quantity
+
+Then:
+
+subtotal = sum of line totals
+
+Weekday discount:
+10% if subtotal > Rs 999 AND it is a weekday.
+
+GST:
+5% on the amount after discount.
+
+Delivery:
+Free if order is above Rs 499.
+Otherwise Rs 40.
+
+The application must display:
+
+Subtotal
+Discount if applicable
+GST
+Delivery charge
+Final total
+
+Use exact arithmetic and round the displayed monetary result to 2 decimal places.
+
+==================================================
+RULE 8 — DELIVERY
+==================================================
+
+Delivery radius = 6 km.
+
+If the customer's location is explicitly known to be more than 6 km away:
+reject delivery.
+
+If the customer asks:
+
+"Do you deliver to Satpur MIDC?"
+
+Do NOT invent the distance.
+
+Say:
+
+"We deliver within a 6 km radius of Tambda Rassa Kitchen, Gangapur Road, Nashik. The provided data does not specify the exact distance to Satpur MIDC. Please provide the exact delivery location so the 6 km rule can be checked."
+
+==================================================
+RULE 9 — ADDRESS CHANGES
+==================================================
+
+The restaurant information does not specify a policy for changing the delivery address after an order.
+
+Therefore, if asked:
+
+"Can I change the address after ordering?"
+
+say:
+
+"The provided restaurant information does not specify a policy for changing the delivery address after an order. Please contact the restaurant directly to confirm."
+
+Do NOT invent a policy.
+
+==================================================
+RULE 10 — PAYMENT
+==================================================
+
+Supported payment methods:
+
+UPI
+Cards
+Cash on delivery
+
+==================================================
+RULE 11 — RESTAURANT HOURS
+==================================================
+
+Restaurant hours:
+
+12:00-15:30
+19:00-23:30
+
+All days.
+
+==================================================
+USER INTERFACE
+==================================================
+
+Create a professional but simple restaurant chatbot UI.
+
+Header:
+"Tambda Rassa Kitchen"
+
+Subtitle:
+"AI Restaurant Ordering Assistant"
+
+Show:
+
+1. Chat messages
+2. Current order panel
+3. Item quantities
+4. Subtotal
+5. Discount
+6. GST
+7. Delivery charge
+8. Final total
+9. Clear order button
+10. Menu button
+11. Checkout / Bill button
+
+The customer should be able to use the chatbot naturally.
+
+Add quick suggestion buttons:
+
+"Show menu"
+
+"Veg starters"
+
+"Jain options"
+
+"My order"
+
+"Calculate bill"
+
+==================================================
+IMPORTANT RELIABILITY REQUIREMENT
+==================================================
+
+Separate the AI's natural-language understanding from business-rule enforcement.
+
+Architecture:
+
+Customer message
+→ Gemini interprets intent/items/quantities
+→ application code validates against menu
+→ application code checks availability
+→ application code checks allergens
+→ application code modifies order
+→ application code calculates bill
+→ chatbot generates a natural-language response
+
+The Gemini model MUST NOT be the final authority for:
+prices
+availability
+GST
+discounts
+delivery charges
+allergens
+
+The structured menu data and deterministic application logic are the authority.
+
+==================================================
+TEST CASES
+==================================================
+
+The application must successfully handle these seven sample conversations:
+
+1.
+"Hi, what veg starters do you have that are not spicy?"
+
+2.
+"I want 2 paneer tikka, 1 dal makhani and 4 butter naan"
+
+Expected:
+Paneer Tikka x2 accepted
+Dal Makhani rejected because unavailable
+Butter Naan x4 accepted
+
+3.
+"Is there anything Jain?"
+
+4.
+"Can I change the address after ordering?"
+
+5.
+"What will be the total with GST?"
+
+6.
+"Do you deliver to Satpur MIDC?"
+
+7.
+"Add one mutton rogan josh... actually remove it, make it veg kolhapuri"
+
+Expected final order:
+Veg Kolhapuri x1
+Mutton Rogan Josh must not remain in the order.
+
+==================================================
+TESTING PANEL
+==================================================
+
+Add a small "Test Scenarios" section that allows me to click each of the seven sample messages and send it to the chatbot.
+
+Also include a "Reset Conversation" button.
+
+==================================================
+RESPONSIBLE AI
+==================================================
+
+Display a small footer:
+
+"AI-assisted restaurant ordering demo. Menu data and business rules are based on the provided fictional teaching dataset. Please verify final orders before payment."
+
+Do not use real personal or confidential data.
+
+==================================================
+TECHNICAL REQUIREMENT
+==================================================
+
+Build this as a real working web application, not a terminal program.
+
+The final result must have a visible chat interface in the AI Studio live preview.
+
+Do not merely give me Python code.
+
+Generate all required frontend and backend code yourself.
+
+Keep the Gemini API key secure on the server side.
+
+Make the application functional immediately in the preview.
+
+==================================================
+FINAL VALIDATION
+==================================================
+
+Before considering the app complete, test:
+
+1. unavailable item
+2. allergen conflict
+3. multiple-item order
+4. remove item
+5. replacement/change request
+6. GST calculation
+7. weekday discount
+8. delivery charge
+9. delivery radius
+10. Jain request
+11. vegetarian filter
+12. non-spicy filter
+
+If any test fails, fix the application code before presenting the final preview.
