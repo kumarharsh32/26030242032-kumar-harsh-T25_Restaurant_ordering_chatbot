@@ -1,0 +1,216 @@
+Test Log - 7 sample conversations (S1-S7) + 12 of my own (T08-T19)							
+Run by run_tests.py against the live bot. Expected totals were worked out by hand BEFORE running. PASS = bill matches to the paisa AND the required rule wording appeared.							
+							
+test id	type	scenario	simulated date/time	conversation (YOU -> BOT)	expected total (hand)	bot total	result
+S1	sample	Veg starters that are not spicy	10/5/26 Mon 13:00	"YOU: Hi, what veg starters do you have that are not spicy?
+BOT: There are no mild-spice veg starters available today.
+Closest (Medium spice, not 'Spicy'): Hara Bhara Kebab (Rs 220, Veg, Medium; contains dairy)
+Avoid (Spicy): Paneer Tikka
+Not available today: Masala Papad, Crispy Corn"	n/a (no bill)	n/a	PASS
+S2	sample	Order 2 paneer tikka + 1 dal makhani (UNAVAILABLE) + 4 butter naan, then ask total	10/5/26 Mon 13:00	"YOU: I want 2 paneer tikka, 1 dal makhani and 4 butter naan
+BOT: Added 2 x Paneer Tikka (Rs 260 each). Note: Contains dairy.
+Sorry, Dal Makhani is not available today, so I have not added it. Similar options available: Paneer Butter Masala (Rs 280), Veg Kolhapuri (Rs 250), Chana Masala (Rs 210).
+Added 4 x Butter Naan (Rs 60 each).
+
+YOU: What will be the total with GST?
+BOT: Here is your bill:
+  2 x Paneer Tikka @ Rs 260 = Rs 520.00
+  4 x Butter Naan @ Rs 60 = Rs 240.00
+  Food subtotal: Rs 760.00
+  GST @5% on Rs 760.00: Rs 38.00
+  Delivery: FREE (food above Rs 499)
+  TOTAL PAYABLE: Rs 798.00"	798.00	798.00	PASS
+S3	sample	Jain query	10/5/26 Mon 13:00	"YOU: Is there anything Jain?
+BOT: Yes - Sabudana Vada (Rs 120; 'Veg (Jain on request)'; Contains dairy) can be made Jain on request. It is the only item marked Jain in our menu - please tell the kitchen your Jain requirements when ordering. I can't promise other dishes are Jain."	n/a (no bill)	n/a	PASS
+S4	sample	Change address after ordering (info not in data -> must not promise)	10/5/26 Mon 13:00	"YOU: Can I change the address after ordering?
+BOT: Yes - nothing is final until you confirm. I'll ask for the delivery address at the end. After the order is placed, changing the address isn't guaranteed, so please check it carefully."	n/a (no bill)	n/a	PASS
+S5	sample	Total with GST when cart is empty (must ask for order, not invent a number)	10/5/26 Mon 13:00	"YOU: What will be the total with GST?
+BOT: I can compute that as soon as I know your order - what would you like? For reference: bill = food subtotal (- 10% on weekdays above Rs 999) + 5% GST + Rs 40 delivery if food is Rs 499 or less."	n/a (no bill)	n/a	PASS
+S6	sample	Delivery to Satpur MIDC (distance unknown -> must not guess)	10/5/26 Mon 13:00	"YOU: Do you deliver to Satpur MIDC?
+BOT: I can't measure the distance to Satpur MIDC myself. We deliver within a 6 km radius of Tambda Rassa Kitchen (Gangapur Road, Nashik). Delivery is free for food above Rs 499, otherwise Rs 40. Please share your full address or pin and the restaurant will confirm it is inside the radius before dispatch."	n/a (no bill)	n/a	PASS
+S7	sample	Add mutton rogan josh, remove it, make it veg kolhapuri	10/5/26 Mon 13:00	"YOU: Add one mutton rogan josh... actually remove it, make it veg kolhapuri
+BOT: Added 1 x Mutton Rogan Josh (Rs 420 each). Note: Contains gluten.
+Removed Mutton Rogan Josh from your order.
+Added 1 x Veg Kolhapuri (Rs 250 each). Note: Contains dairy.
+
+YOU: total
+BOT: Here is your bill:
+  1 x Veg Kolhapuri @ Rs 250 = Rs 250.00
+  Food subtotal: Rs 250.00
+  GST @5% on Rs 250.00: Rs 12.50
+  Delivery: Rs 40.00
+  TOTAL PAYABLE: Rs 302.50"	302.50	302.50	PASS
+T08	own	Just below free-delivery threshold: Chana Masala + Paneer Butter Masala = 490	10/5/26 Mon 13:00	"YOU: I want 1 chana masala and 1 paneer butter masala
+BOT: Added 1 x Chana Masala (Rs 210 each). Note: Contains gluten.
+Added 1 x Paneer Butter Masala (Rs 280 each). Note: Contains gluten.
+
+YOU: bill
+BOT: Here is your bill:
+  1 x Chana Masala @ Rs 210 = Rs 210.00
+  1 x Paneer Butter Masala @ Rs 280 = Rs 280.00
+  Food subtotal: Rs 490.00
+  GST @5% on Rs 490.00: Rs 24.50
+  Delivery: Rs 40.00
+  TOTAL PAYABLE: Rs 554.50
+  Tip: add Rs 10 more food to get free delivery (saves Rs 40)."	554.50	554.50	PASS
+T09	own	Just above threshold: Hara Bhara Kebab + Paneer Butter Masala = 500 (delivery free)	10/5/26 Mon 13:00	"YOU: 1 hara bhara kebab and 1 paneer butter masala
+BOT: Added 1 x Hara Bhara Kebab (Rs 220 each). Note: Contains dairy.
+Added 1 x Paneer Butter Masala (Rs 280 each). Note: Contains gluten.
+
+YOU: bill
+BOT: Here is your bill:
+  1 x Hara Bhara Kebab @ Rs 220 = Rs 220.00
+  1 x Paneer Butter Masala @ Rs 280 = Rs 280.00
+  Food subtotal: Rs 500.00
+  GST @5% on Rs 500.00: Rs 25.00
+  Delivery: FREE (food above Rs 499)
+  TOTAL PAYABLE: Rs 525.00"	525.00	525.00	PASS
+T10	own	Weekday discount applies: 2 Mutton Rogan Josh + 1 Chicken Biryani = 1160 (Monday)	10/5/26 Mon 13:00	"YOU: Please add 2 mutton rogan josh and a chicken biryani
+BOT: Added 2 x Mutton Rogan Josh (Rs 420 each). Note: Contains gluten.
+Added 1 x Chicken Biryani (Rs 320 each). Note: Contains nuts.
+
+YOU: total
+BOT: Here is your bill:
+  2 x Mutton Rogan Josh @ Rs 420 = Rs 840.00
+  1 x Chicken Biryani @ Rs 320 = Rs 320.00
+  Food subtotal: Rs 1,160.00
+  Weekday offer (10% off, food > Rs 999): -Rs 116.00
+  Amount after discount: Rs 1,044.00
+  GST @5% on Rs 1,044.00: Rs 52.20
+  Delivery: FREE (food above Rs 499)
+  TOTAL PAYABLE: Rs 1,096.20"	1,096.20	1,096.20	PASS
+T11	own	Same order on Sunday: NO discount	10/4/26 Sun 13:00	"YOU: Please add 2 mutton rogan josh and a chicken biryani
+BOT: Added 2 x Mutton Rogan Josh (Rs 420 each). Note: Contains gluten.
+Added 1 x Chicken Biryani (Rs 320 each). Note: Contains nuts.
+
+YOU: total
+BOT: Here is your bill:
+  2 x Mutton Rogan Josh @ Rs 420 = Rs 840.00
+  1 x Chicken Biryani @ Rs 320 = Rs 320.00
+  Food subtotal: Rs 1,160.00
+  GST @5% on Rs 1,160.00: Rs 58.00
+  Delivery: FREE (food above Rs 499)
+  TOTAL PAYABLE: Rs 1,218.00"	1,218.00	1,218.00	PASS
+T12	own	Boundary 990 on weekday: no discount; nudge to unlock offer	10/5/26 Mon 13:00	"YOU: 2 mutton rogan josh and 1 chocolate brownie
+BOT: Added 2 x Mutton Rogan Josh (Rs 420 each). Note: Contains gluten.
+Added 1 x Chocolate Brownie (Rs 150 each). Note: contains egg.
+
+YOU: bill
+BOT: Here is your bill:
+  2 x Mutton Rogan Josh @ Rs 420 = Rs 840.00
+  1 x Chocolate Brownie @ Rs 150 = Rs 150.00
+  Food subtotal: Rs 990.00
+  GST @5% on Rs 990.00: Rs 49.50
+  Delivery: FREE (food above Rs 499)
+  TOTAL PAYABLE: Rs 1,039.50
+  Tip: add Rs 10 more food today to unlock 10% off (weekday offer)."	1,039.50	1,039.50	PASS
+T13	own	Boundary 1000 on weekday: discount applies	10/5/26 Mon 13:00	"YOU: 2 mutton rogan josh, 1 gulab jamun and 1 garlic naan
+BOT: Added 2 x Mutton Rogan Josh (Rs 420 each). Note: Contains gluten.
+Added 1 x Gulab Jamun (Rs 90 each).
+Added 1 x Garlic Naan (Rs 70 each). Note: Contains dairy.
+
+YOU: bill
+BOT: Here is your bill:
+  2 x Mutton Rogan Josh @ Rs 420 = Rs 840.00
+  1 x Gulab Jamun @ Rs 90 = Rs 90.00
+  1 x Garlic Naan @ Rs 70 = Rs 70.00
+  Food subtotal: Rs 1,000.00
+  Weekday offer (10% off, food > Rs 999): -Rs 100.00
+  Amount after discount: Rs 900.00
+  GST @5% on Rs 900.00: Rs 45.00
+  Delivery: FREE (food above Rs 499)
+  TOTAL PAYABLE: Rs 945.00"	945.00	945.00	PASS
+T14	own	Two UNAVAILABLE items, then a valid alternative	10/5/26 Mon 13:00	"YOU: Add prawn curry and butter chicken
+BOT: Sorry, Prawn Curry is not available today, so I have not added it. Similar options available: Mutton Rogan Josh (Rs 420).
+Sorry, Butter Chicken is not available today, so I have not added it. Similar options available: Mutton Rogan Josh (Rs 420).
+
+YOU: ok 1 mutton rogan josh
+BOT: Added 1 x Mutton Rogan Josh (Rs 420 each). Note: Contains gluten.
+
+YOU: total
+BOT: Here is your bill:
+  1 x Mutton Rogan Josh @ Rs 420 = Rs 420.00
+  Food subtotal: Rs 420.00
+  GST @5% on Rs 420.00: Rs 21.00
+  Delivery: Rs 40.00
+  TOTAL PAYABLE: Rs 481.00
+  Tip: add Rs 80 more food to get free delivery (saves Rs 40)."	481.00	481.00	PASS
+T15	own	Nut allergy: Chicken Biryani blocked; lime soda has no allergen data -> caution	10/5/26 Mon 13:00	"YOU: I'm allergic to nuts. 1 chicken biryani and 1 fresh lime soda
+BOT: Noted - I'll flag any dish with: nuts. Dishes with no allergen info on file will be marked 'unconfirmed'.
+ALLERGY ALERT: Chicken Biryani contains nuts, and you told me you are allergic. I have NOT added it. Reply 'yes add anyway' to add it, or pick something else.
+Added 1 x Fresh Lime Soda (Rs 80 each). Caution: our menu has no allergen information for Fresh Lime Soda, so I cannot confirm it is free of nuts. Please confirm with the kitchen before eating.
+
+YOU: no
+BOT: OK, I've left it out. What else would you like?
+
+YOU: total
+BOT: Here is your bill:
+  1 x Fresh Lime Soda @ Rs 80 = Rs 80.00
+  Food subtotal: Rs 80.00
+  GST @5% on Rs 80.00: Rs 4.00
+  Delivery: Rs 40.00
+  TOTAL PAYABLE: Rs 124.00"	124.00	124.00	PASS
+T16	own	Quantity change: 2 gulab jamun + 1 kulfi, then make it 3 gulab jamun	10/5/26 Mon 13:00	"YOU: 2 gulab jamun and 1 kulfi
+BOT: Added 2 x Gulab Jamun (Rs 90 each).
+Added 1 x Kulfi (Rs 100 each).
+
+YOU: make it 3 gulab jamun
+BOT: Updated: 3 x Gulab Jamun.
+
+YOU: total
+BOT: Here is your bill:
+  3 x Gulab Jamun @ Rs 90 = Rs 270.00
+  1 x Kulfi @ Rs 100 = Rs 100.00
+  Food subtotal: Rs 370.00
+  GST @5% on Rs 370.00: Rs 18.50
+  Delivery: Rs 40.00
+  TOTAL PAYABLE: Rs 428.50"	428.50	428.50	PASS
+T17	own	Jain order: 2 sabudana vada	10/5/26 Mon 13:00	"YOU: 2 sabudana vada jain please
+BOT: Added 2 x Sabudana Vada (Rs 120 each). Note: Contains dairy.
+
+YOU: total
+BOT: Here is your bill:
+  2 x Sabudana Vada @ Rs 120 = Rs 240.00
+  Food subtotal: Rs 240.00
+  GST @5% on Rs 240.00: Rs 12.00
+  Delivery: Rs 40.00
+  TOTAL PAYABLE: Rs 292.00"	292.00	292.00	PASS
+T18	own	Typos + unknown item: 'panner tikka', 'pizza', ambiguous 'naan'	10/5/26 Mon 13:00	"YOU: 2 panner tikka and 1 pizza and 1 naan
+BOT: Added 2 x Paneer Tikka (Rs 260 each). Note: Contains dairy.
+Sorry, I couldn't find 'pizza' on our menu.
+Which 'naan' do you mean? Butter Naan (Rs 60), Garlic Naan (Rs 70).
+
+YOU: total
+BOT: Here is your bill:
+  2 x Paneer Tikka @ Rs 260 = Rs 520.00
+  Food subtotal: Rs 520.00
+  GST @5% on Rs 520.00: Rs 26.00
+  Delivery: FREE (food above Rs 499)
+  TOTAL PAYABLE: Rs 546.00"	546.00	546.00	PASS
+T19	own	Closed hours (4 pm): cart ok, order cannot be placed; then place at 7:30 pm with address	10/5/26 Mon 16:00	"YOU: 1 kulfi
+BOT: Added 1 x Kulfi (Rs 100 each).
+
+YOU: confirm
+BOT: We're closed right now (open 12:00-15:30 and 19:00-23:30 daily), so I can't place the order yet. Your cart is saved.
+
+YOU: [19:30 same cart] 1 kulfi
+BOT: Added 1 x Kulfi (Rs 100 each).
+
+YOU: confirm
+BOT: Here is your bill:
+  1 x Kulfi @ Rs 100 = Rs 100.00
+  Food subtotal: Rs 100.00
+  GST @5% on Rs 100.00: Rs 5.00
+  Delivery: Rs 40.00
+  TOTAL PAYABLE: Rs 145.00
+Please share your delivery address (we deliver within 6 km of Gangapur Road, Nashik).
+
+YOU: Flat 12, Gangapur Road, Nashik
+BOT: Order #001 placed for delivery to: Flat 12, Gangapur Road, Nashik.
+Here is your bill:
+  1 x Kulfi @ Rs 100 = Rs 100.00
+  Food subtotal: Rs 100.00
+  GST @5% on Rs 100.00: Rs 5.00
+  Delivery: Rs 40.00
+  TOTAL PAYABLE: Rs 145.00
+Payment: UPI, card or cash on delivery. Thank you - Tambda Rassa Kitchen!"	n/a (no bill)	n/a	PASS
