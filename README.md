@@ -1,5 +1,3 @@
-# 26030242032-kumar-harsh-T25_Restaurant_ordering_chatbot
-
 Restaurant Ordering Chatbot
 T25 — Chatbots & AI Assistants
 1. Project Overview and Objective
@@ -42,7 +40,6 @@ Google AI Studio Build Mode was selected for the user-facing prototype because i
 3.1 Python Terminal Prototype
 Python terminal prototype: The terminal chatbot was important because it made the business rules visible and testable before adding a graphical interface. It allowed me to identify a key weakness in an AI-only approach: the model could sound confident while accepting an unavailable item. The Python rule layer therefore became the reference implementation for availability and billing behaviour. The terminal version and the hosted version should be viewed as complementary: Python provided control and debugging, while AI Studio provided accessibility and presentation.
 3.2 Hosted Google AI Studio Chatbot
-Hosted Google AI Studio chatbot: https://aistudio.google.com/app/apps/6be90b23-8d9f-4992-80d7-43aae4c174cf?showPreview=true&project=gen-lang-client-0616841114&showAssistant=true&appParams=rules-info&fullscreenApplet=true
 The hosted build is the user-facing version of the project and is intended for demonstration/screen recording. Google AI Studio supports building web applications from natural-language instructions and provides live previews and deployment options. The project link should be checked for sharing permissions before submission.
 4. Testing, Recommendations and Future Improvements
 4.1 Testing Strategy
@@ -115,4 +112,5 @@ Sources
 3. Google AI Studio Build Mode prototype created for the project.
 Live Application
 https://ai.studio/apps/6be90b23-8d9f-4992-80d7-43aae4c174cf 
-<img width="470" height="648" alt="image" src="https://github.com/user-attachments/assets/d5922ffc-e898-45a0-b9e4-4f8cd420951a" />
+
+
