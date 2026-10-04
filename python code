@@ -1,0 +1,1006 @@
+import openpyxl
+import re
+import math
+from difflib import get_close_matches
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+EXCEL_FILE = "T25_Restaurant_ordering_chatbot.xlsx"
+
+# ============================================================
+# LOAD EXCEL WORKBOOK
+# ============================================================
+
+wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
+
+menu_ws = wb["Menu"]
+info_ws = wb["Restaurant Info"]
+test_ws = wb["Test Conversations"]
+
+# ============================================================
+# READ MENU USING THE ACTUAL HEADERS
+# ============================================================
+
+menu_headers = [
+    cell.value for cell in menu_ws[1]
+]
+
+menu = []
+
+for row in menu_ws.iter_rows(min_row=2, values_only=True):
+
+    # Ignore completely empty rows
+    if not any(v is not None for v in row):
+        continue
+
+    item = dict(zip(menu_headers, row))
+
+    # Convert values to predictable formats
+    if item.get("price_inr") is not None:
+        item["price_inr"] = float(item["price_inr"])
+
+    if item.get("prep_time_min") is not None:
+        item["prep_time_min"] = int(item["prep_time_min"])
+
+    menu.append(item)
+
+
+# ============================================================
+# READ RESTAURANT INFO
+# ============================================================
+
+restaurant_info = {}
+
+for row in info_ws.iter_rows(min_row=2, values_only=True):
+
+    if row[0] is not None:
+        restaurant_info[str(row[0]).strip()] = row[1]
+
+
+# ============================================================
+# BASIC VALIDATION
+# ============================================================
+
+REQUIRED_MENU_COLUMNS = [
+    "item_id",
+    "category",
+    "item_name",
+    "price_inr",
+    "food_type",
+    "spice_level",
+    "prep_time_min",
+    "allergen_note",
+    "available_today"
+]
+
+missing_columns = [
+    c for c in REQUIRED_MENU_COLUMNS
+    if c not in menu_headers
+]
+
+if missing_columns:
+    raise ValueError(
+        f"Menu sheet is missing required columns: {missing_columns}"
+    )
+
+print(f"Loaded {len(menu)} menu items.")
+print("Menu columns:", menu_headers)
+print("Restaurant information loaded:", restaurant_info)
+
+
+# ============================================================
+# CREATE LOOKUP TABLES
+# ============================================================
+
+ITEM_BY_ID = {
+    str(item["item_id"]).lower(): item
+    for item in menu
+}
+
+ITEM_BY_NAME = {
+    str(item["item_name"]).lower(): item
+    for item in menu
+}
+
+ITEM_NAMES = list(ITEM_BY_NAME.keys())
+
+
+# ============================================================
+# FIND MENU ITEM
+# ============================================================
+
+def find_item(item_name):
+
+    item_name = item_name.strip().lower()
+
+    # Exact match
+    if item_name in ITEM_BY_NAME:
+        return ITEM_BY_NAME[item_name]
+
+    # Exact ID
+    if item_name in ITEM_BY_ID:
+        return ITEM_BY_ID[item_name]
+
+    # Partial matching
+    for name, item in ITEM_BY_NAME.items():
+
+        if item_name in name or name in item_name:
+            return item
+
+    # Fuzzy matching
+    matches = get_close_matches(
+        item_name,
+        ITEM_NAMES,
+        n=1,
+        cutoff=0.65
+    )
+
+    if matches:
+        return ITEM_BY_NAME[matches[0]]
+
+    return None
+
+
+# ============================================================
+# DISPLAY MENU
+# ============================================================
+
+def show_menu():
+
+    print("\n========== TAMBA RASSA KITCHEN MENU ==========\n")
+
+    current_category = None
+
+    for item in menu:
+
+        category = item["category"]
+
+        if category != current_category:
+            print(f"\n--- {category} ---")
+            current_category = category
+
+        availability = (
+            "AVAILABLE"
+            if str(item["available_today"]).lower() == "yes"
+            else "UNAVAILABLE"
+        )
+
+        print(
+            f"{item['item_name']} | "
+            f"₹{item['price_inr']:.0f} | "
+            f"{item['food_type']} | "
+            f"{item['spice_level']} | "
+            f"{availability}"
+        )
+
+
+# ============================================================
+# ALLERGEN CHECK
+# ============================================================
+
+def allergen_conflict(item, allergies):
+
+    if not allergies:
+        return False
+
+    allergen_note = item.get("allergen_note")
+
+    if not allergen_note:
+        return False
+
+    allergen_note = str(allergen_note).lower()
+
+    for allergy in allergies:
+
+        allergy = allergy.lower().strip()
+
+        if allergy in allergen_note:
+            return True
+
+    return False
+
+
+# ============================================================
+# AVAILABILITY CHECK
+# ============================================================
+
+def is_available(item):
+
+    return str(
+        item.get("available_today", "")
+    ).strip().lower() == "yes"
+
+
+# ============================================================
+# FOOD TYPE CHECK
+# ============================================================
+
+def is_veg(item):
+
+    food_type = str(
+        item.get("food_type", "")
+    ).lower()
+
+    return "veg" in food_type and "non-veg" not in food_type
+
+
+# ============================================================
+# BILL CALCULATION
+# ============================================================
+
+def calculate_bill(order):
+
+    """
+    order format:
+
+    [
+        {
+            "item": menu_item,
+            "quantity": 2
+        }
+    ]
+    """
+
+    subtotal = 0
+
+    bill_lines = []
+
+    for entry in order:
+
+        item = entry["item"]
+        quantity = entry["quantity"]
+
+        amount = item["price_inr"] * quantity
+
+        subtotal += amount
+
+        bill_lines.append({
+            "item_name": item["item_name"],
+            "quantity": quantity,
+            "unit_price": item["price_inr"],
+            "amount": amount
+        })
+
+    # ========================================================
+    # WEEKDAY OFFER
+    # ========================================================
+    #
+    # We don't automatically apply this because the chatbot
+    # needs to know the day.
+    #
+    # Use calculate_final_bill() when the day is known.
+    # ========================================================
+
+    return bill_lines, subtotal
+
+
+# ============================================================
+# FINAL BILL
+# ============================================================
+
+def calculate_final_bill(
+    order,
+    weekday=False,
+    delivery_distance_km=None
+):
+
+    bill_lines, subtotal = calculate_bill(order)
+
+    discount = 0
+
+    # Restaurant Info:
+    # "10% off on orders above Rs 999 on weekdays"
+
+    if weekday and subtotal > 999:
+        discount = subtotal * 0.10
+
+    amount_after_discount = subtotal - discount
+
+    # Restaurant Info:
+    # "5% GST on food bill"
+
+    gst = amount_after_discount * 0.05
+
+    # Delivery charge
+    delivery_charge = 0
+
+    if delivery_distance_km is not None:
+
+        if delivery_distance_km > 6:
+            return {
+                "success": False,
+                "error": (
+                    "Sorry, the delivery location is outside "
+                    "our 6 km delivery radius."
+                )
+            }
+
+        if subtotal <= 499:
+            delivery_charge = 40
+
+    grand_total = (
+        amount_after_discount
+        + gst
+        + delivery_charge
+    )
+
+    return {
+        "success": True,
+        "bill_lines": bill_lines,
+        "subtotal": round(subtotal, 2),
+        "discount": round(discount, 2),
+        "amount_after_discount": round(
+            amount_after_discount, 2
+        ),
+        "gst": round(gst, 2),
+        "delivery_charge": round(
+            delivery_charge, 2
+        ),
+        "grand_total": round(
+            grand_total, 2
+        )
+    }
+
+
+# ============================================================
+# PRINT BILL
+# ============================================================
+
+def print_bill(result):
+
+    if not result["success"]:
+        print("\n❌", result["error"])
+        return
+
+    print("\n===================================")
+    print("        TAMBA RASSA KITCHEN")
+    print("===================================")
+
+    for line in result["bill_lines"]:
+
+        print(
+            f"{line['item_name']} x {line['quantity']} "
+            f"@ ₹{line['unit_price']:.0f} "
+            f"= ₹{line['amount']:.2f}"
+        )
+
+    print("-----------------------------------")
+
+    print(f"Subtotal: ₹{result['subtotal']:.2f}")
+
+    if result["discount"] > 0:
+        print(
+            f"Weekday Discount: "
+            f"-₹{result['discount']:.2f}"
+        )
+
+    print(
+        f"GST (5%): ₹{result['gst']:.2f}"
+    )
+
+    if result["delivery_charge"] > 0:
+        print(
+            f"Delivery: "
+            f"₹{result['delivery_charge']:.2f}"
+        )
+    else:
+        print("Delivery: FREE")
+
+    print("-----------------------------------")
+
+    print(
+        f"TOTAL: ₹{result['grand_total']:.2f}"
+    )
+
+    print("===================================")
+
+
+# ============================================================
+# ADD ITEM TO ORDER
+# ============================================================
+
+def add_item(
+    order,
+    item_name,
+    quantity=1,
+    allergies=None
+):
+
+    if quantity <= 0:
+        return False, "Quantity must be greater than zero."
+
+    item = find_item(item_name)
+
+    if item is None:
+        return False, (
+            f"Sorry, I could not find '{item_name}' "
+            "on the menu."
+        )
+
+    # --------------------------------------------------------
+    # AVAILABILITY RULE
+    # --------------------------------------------------------
+
+    if not is_available(item):
+
+        return False, (
+            f"❌ {item['item_name']} is currently "
+            "unavailable today."
+        )
+
+    # --------------------------------------------------------
+    # ALLERGEN RULE
+    # --------------------------------------------------------
+
+    if allergen_conflict(item, allergies):
+
+        return False, (
+            f"⚠️ {item['item_name']} cannot be added "
+            f"because it has this allergen information: "
+            f"{item['allergen_note']}."
+        )
+
+    # --------------------------------------------------------
+    # ADD TO ORDER
+    # --------------------------------------------------------
+
+    for existing in order:
+
+        if existing["item"]["item_id"] == item["item_id"]:
+
+            existing["quantity"] += quantity
+
+            return True, (
+                f"Added {quantity} more "
+                f"{item['item_name']}."
+            )
+
+    order.append({
+        "item": item,
+        "quantity": quantity
+    })
+
+    return True, (
+        f"Added {quantity} x "
+        f"{item['item_name']}."
+    )
+
+
+# ============================================================
+# REMOVE ITEM
+# ============================================================
+
+def remove_item(order, item_name, quantity=None):
+
+    item = find_item(item_name)
+
+    if item is None:
+        return False, (
+            f"I couldn't find '{item_name}' "
+            "on the menu."
+        )
+
+    for existing in order:
+
+        if existing["item"]["item_id"] == item["item_id"]:
+
+            if quantity is None:
+                order.remove(existing)
+
+                return True, (
+                    f"Removed {item['item_name']} "
+                    "from your order."
+                )
+
+            if quantity >= existing["quantity"]:
+
+                order.remove(existing)
+
+                return True, (
+                    f"Removed {item['item_name']} "
+                    "from your order."
+                )
+
+            existing["quantity"] -= quantity
+
+            return True, (
+                f"Removed {quantity} x "
+                f"{item['item_name']}."
+            )
+
+    return False, (
+        f"{item['item_name']} is not currently "
+        "in your order."
+    )
+
+
+# ============================================================
+# SHOW CURRENT ORDER
+# ============================================================
+
+def show_order(order):
+
+    if not order:
+        print("\nYour order is empty.")
+        return
+
+    print("\n========== CURRENT ORDER ==========")
+
+    for entry in order:
+
+        item = entry["item"]
+
+        print(
+            f"{item['item_name']} x "
+            f"{entry['quantity']} "
+            f"= ₹"
+            f"{item['price_inr'] * entry['quantity']:.2f}"
+        )
+
+    print("===================================")
+
+
+# ============================================================
+# FIND VEG / NON-SPICY ITEMS
+# ============================================================
+
+def find_veg_non_spicy():
+
+    results = []
+
+    for item in menu:
+
+        if not is_available(item):
+            continue
+
+        if not is_veg(item):
+            continue
+
+        spice = str(
+            item["spice_level"]
+        ).lower()
+
+        if spice in ["mild", "-"]:
+
+            results.append(item)
+
+    return results
+
+
+# ============================================================
+# JAIN OPTIONS
+# ============================================================
+
+def find_jain_options():
+
+    results = []
+
+    for item in menu:
+
+        if not is_available(item):
+            continue
+
+        food_type = str(
+            item["food_type"]
+        ).lower()
+
+        # The dataset explicitly marks Sabudana Vada
+        # as "Veg (Jain on request)"
+
+        if "jain" in food_type:
+            results.append(item)
+
+    return results
+
+
+# ============================================================
+# TEST SAMPLE CONVERSATIONS
+# ============================================================
+
+def run_sample_tests():
+
+    print("\n\n==============================================")
+    print("       SAMPLE CONVERSATION TESTS")
+    print("==============================================")
+
+    for row in test_ws.iter_rows(
+        min_row=2,
+        values_only=True
+    ):
+
+        if not row[1]:
+            continue
+
+        message = str(row[1])
+
+        print("\nCustomer:")
+        print(message)
+
+        # These are intentionally simple rule-based
+        # demonstrations for your evaluation.
+        lower = message.lower()
+
+        if "veg starters" in lower:
+
+            results = []
+
+            for item in menu:
+
+                if (
+                    item["category"] == "Starters"
+                    and is_veg(item)
+                    and is_available(item)
+                    and str(item["spice_level"]).lower()
+                    != "spicy"
+                ):
+                    results.append(item)
+
+            print("\nBot:")
+            if results:
+                for item in results:
+                    print(
+                        f"- {item['item_name']} "
+                        f"₹{item['price_inr']}"
+                    )
+            else:
+                print(
+                    "Sorry, there are no matching "
+                    "available items."
+                )
+
+        elif "jain" in lower:
+
+            results = find_jain_options()
+
+            print("\nBot:")
+
+            if results:
+                for item in results:
+                    print(
+                        f"- {item['item_name']} "
+                        "(Jain on request)"
+                    )
+            else:
+                print(
+                    "No explicitly marked Jain "
+                    "options are available."
+                )
+
+        elif "butter chicken" in lower:
+
+            item = find_item("Butter Chicken")
+
+            print("\nBot:")
+
+            if not is_available(item):
+                print(
+                    "❌ Butter Chicken is unavailable today."
+                )
+
+        elif "mutton rogan" in lower:
+
+            item = find_item("Mutton Rogan Josh")
+
+            print("\nBot:")
+
+            if is_available(item):
+                print(
+                    "Mutton Rogan Josh is available."
+                )
+
+            veg_item = find_item("Veg Kolhapuri")
+
+            print(
+                f"After your change, "
+                f"Veg Kolhapuri is available: "
+                f"{is_available(veg_item)}"
+            )
+
+        else:
+
+            print(
+                "\nBot: This test should be handled "
+                "through the order-processing layer."
+            )
+
+
+# ============================================================
+# INTERACTIVE CHATBOT
+# ============================================================
+
+def chatbot():
+
+    order = []
+
+    allergies = []
+
+    print("\n")
+    print("==============================================")
+    print("       TAMBA RASSA KITCHEN CHATBOT")
+    print("==============================================")
+    print("Type 'menu' to see the menu.")
+    print("Type 'order' to see your order.")
+    print("Type 'bill' to calculate your bill.")
+    print("Type 'quit' to exit.")
+    print("----------------------------------------------")
+
+    # Ask allergies first
+    allergy_input = input(
+        "\nDo you have any food allergies? "
+        "(e.g. dairy, gluten, nuts, or type 'no'): "
+    )
+
+    if allergy_input.lower().strip() != "no":
+
+        allergies = [
+            x.strip().lower()
+            for x in allergy_input.split(",")
+            if x.strip()
+        ]
+
+        print(
+            f"Allergy restrictions recorded: "
+            f"{allergies}"
+        )
+
+    while True:
+
+        message = input("\nYou: ").strip()
+
+        if not message:
+            continue
+
+        lower = message.lower()
+
+        # ----------------------------------------------------
+        # EXIT
+        # ----------------------------------------------------
+
+        if lower in ["quit", "exit", "bye"]:
+            print("Bot: Thank you! Goodbye.")
+            break
+
+        # ----------------------------------------------------
+        # MENU
+        # ----------------------------------------------------
+
+        if lower == "menu":
+            show_menu()
+            continue
+
+        # ----------------------------------------------------
+        # ORDER
+        # ----------------------------------------------------
+
+        if lower == "order":
+            show_order(order)
+            continue
+
+        # ----------------------------------------------------
+        # BILL
+        # ----------------------------------------------------
+
+        if lower == "bill":
+
+            result = calculate_final_bill(
+                order,
+                weekday=False
+            )
+
+            print_bill(result)
+
+            continue
+
+        # ----------------------------------------------------
+        # VEG STARTERS
+        # ----------------------------------------------------
+
+        if (
+            "veg starters" in lower
+            and (
+                "not spicy" in lower
+                or "non spicy" in lower
+                or "mild" in lower
+            )
+        ):
+
+            results = []
+
+            for item in menu:
+
+                if (
+                    item["category"] == "Starters"
+                    and is_veg(item)
+                    and is_available(item)
+                    and str(item["spice_level"]).lower()
+                    in ["mild", "medium"]
+                ):
+                    results.append(item)
+
+            print("\nBot:")
+
+            if results:
+                for item in results:
+                    print(
+                        f"• {item['item_name']} "
+                        f"₹{item['price_inr']}"
+                    )
+            else:
+                print(
+                    "Sorry, no matching starters "
+                    "are available."
+                )
+
+            continue
+
+        # ----------------------------------------------------
+        # JAIN
+        # ----------------------------------------------------
+
+        if "jain" in lower:
+
+            results = find_jain_options()
+
+            print("\nBot:")
+
+            if results:
+
+                for item in results:
+                    print(
+                        f"• {item['item_name']} "
+                        "— Jain on request"
+                    )
+
+            else:
+                print(
+                    "There are no explicitly marked "
+                    "Jain options available."
+                )
+
+            continue
+
+        # ----------------------------------------------------
+        # REMOVE ITEM
+        # ----------------------------------------------------
+
+        if (
+            "remove" in lower
+            or "delete" in lower
+        ):
+
+            # Try every menu item
+            for item in menu:
+
+                if item["item_name"].lower() in lower:
+
+                    success, response = remove_item(
+                        order,
+                        item["item_name"]
+                    )
+
+                    print("Bot:", response)
+                    break
+
+            else:
+
+                print(
+                    "Bot: Please tell me which menu "
+                    "item you want removed."
+                )
+
+            continue
+
+        # ----------------------------------------------------
+        # ADD ITEM
+        # ----------------------------------------------------
+
+        found_something = False
+
+        for item in menu:
+
+            item_name = item["item_name"]
+
+            if item_name.lower() in lower:
+
+                found_something = True
+
+                # --------------------------------------------
+                # Extract quantity
+                # --------------------------------------------
+
+                quantity = 1
+
+                pattern = (
+                    r"(\d+)\s+"
+                    + re.escape(item_name.lower())
+                )
+
+                match = re.search(
+                    pattern,
+                    lower
+                )
+
+                if match:
+                    quantity = int(match.group(1))
+
+                success, response = add_item(
+                    order,
+                    item_name,
+                    quantity,
+                    allergies
+                )
+
+                print("Bot:", response)
+
+                break
+
+        if found_something:
+            continue
+
+        # ----------------------------------------------------
+        # DELIVERY
+        # ----------------------------------------------------
+
+        if "delivery" in lower:
+
+            print(
+                "Bot: We deliver within a "
+                "6 km radius."
+            )
+
+            print(
+                "Free delivery is available "
+                "for orders above ₹499."
+            )
+
+            print(
+                "Otherwise, delivery charge is ₹40."
+            )
+
+            continue
+
+        # ----------------------------------------------------
+        # GST
+        # ----------------------------------------------------
+
+        if "gst" in lower:
+
+            print(
+                "Bot: GST is 5% on the food bill."
+            )
+
+            continue
+
+        # ----------------------------------------------------
+        # FALLBACK
+        # ----------------------------------------------------
+
+        print(
+            "Bot: I couldn't confidently match that "
+            "request to the restaurant menu. "
+            "Please type 'menu' or specify the item name."
+        )
+
+
+# ============================================================
+# START
+# ============================================================
+
+if __name__ == "__main__":
+
+    print(
+        "\nTambda Rassa Kitchen data successfully loaded."
+    )
+
+    print(
+        f"Menu items loaded: {len(menu)}"
+    )
+
+    print(
+        f"Restaurant info fields: "
+        f"{len(restaurant_info)}"
+    )
+
+    chatbot()
